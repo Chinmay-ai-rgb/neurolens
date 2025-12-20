@@ -446,16 +446,34 @@ class SaccadeTask(BaseTask):
                 # Latency
                 latency_ms = (onset_time - jump_time) * 1000
                 
-                # Find peak velocity
-                peak_vel, peak_idx = find_peak_velocity(vel_mag, onset_idx, len(vel_mag))
-                peak_velocity = peak_vel
+                # Define search window for landing (max 400ms after onset, or end of data)
+                max_duration_samples = int(0.4 * 30)  # ~400ms at 30fps = 12 samples
+                search_end = min(onset_idx + max_duration_samples, len(gaze_x))
                 
-                # Find landing (velocity drops below threshold after peak)
-                landing_idx = peak_idx
-                for i in range(peak_idx, len(vel_x_abs)):
-                    if vel_x_abs[i] < self.config.velocity_threshold:
+                # Find landing using max displacement in expected direction
+                # This is more robust than velocity threshold for webcam data
+                expected_sign = np.sign(eccentricity)
+                max_displacement = 0
+                landing_idx = onset_idx
+                
+                for i in range(onset_idx, search_end):
+                    displacement = (gaze_x[i] - onset_gaze_x) * expected_sign  # Positive if correct direction
+                    if displacement > max_displacement:
+                        max_displacement = displacement
                         landing_idx = i
-                        break
+                
+                # Find peak velocity within onset to landing window
+                # Use 95th percentile instead of max to reduce noise sensitivity
+                if landing_idx > onset_idx:
+                    vel_window = vel_mag[onset_idx:landing_idx+1]
+                    if len(vel_window) > 0:
+                        peak_velocity = np.percentile(vel_window, 95)
+                    else:
+                        peak_vel, _ = find_peak_velocity(vel_mag, onset_idx, len(vel_mag))
+                        peak_velocity = peak_vel
+                else:
+                    peak_vel, _ = find_peak_velocity(vel_mag, onset_idx, len(vel_mag))
+                    peak_velocity = peak_vel
                 
                 if landing_idx < len(timestamps):
                     landing_time = timestamps[landing_idx]

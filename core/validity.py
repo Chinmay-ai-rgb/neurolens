@@ -43,14 +43,15 @@ class ValidityThresholds:
     max_clamp_rate_per_trial: float = 0.25  # Increased from 0.05 for webcam noise
     max_clamp_rate_session: float = 0.10  # Increased from 0.02 for webcam noise
     
-    # Saccade thresholds
+    # Saccade thresholds (adjusted for webcam physics)
     saccade_latency_min_ms: float = 50.0
     saccade_latency_max_ms: float = 900.0
     saccade_duration_min_ms: float = 15.0
     saccade_duration_max_ms: float = 400.0
     saccade_min_amplitude_fraction: float = 0.15
     saccade_velocity_threshold: float = 30.0  # px/s
-    saccade_max_peak_velocity: float = 5000.0  # px/s
+    # Peak velocity threshold: 576px saccade at 30fps = ~17000 px/s expected
+    saccade_max_peak_velocity: float = 20000.0  # px/s (increased from 5000 for webcam)
     
     # Antisaccade thresholds
     antisaccade_latency_min_ms: float = 80.0
