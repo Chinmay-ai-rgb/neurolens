@@ -10,7 +10,7 @@ from enum import Enum
 from .base import BaseTask, TaskConfig, TaskResult
 from core.logging import FrameLogger, SummaryLogger, SACCADE_SUMMARY_COLUMNS
 from core.validity import InvalidReason
-from core.utils import detect_saccade_onset, find_peak_velocity
+from core.utils import detect_saccade_onset_robust, find_peak_velocity
 
 
 class SaccadeState(Enum):
@@ -425,10 +425,17 @@ class SaccadeTask(BaseTask):
             # Use x-velocity for direction detection (horizontal saccades)
             vel_x_abs = np.abs(vel_x)
             
-            # Detect saccade onset
-            onset_idx = detect_saccade_onset(
-                vel_x_abs, timestamps,
-                threshold=self.config.velocity_threshold,
+            # Use baseline_gaze_x if available, otherwise use first valid sample
+            baseline_for_detection = baseline_gaze_x if baseline_gaze_x is not None else gaze_x[0]
+            
+            # Detect saccade onset using robust displacement-based detection
+            onset_idx = detect_saccade_onset_robust(
+                gaze_x, vel_x_abs, timestamps,
+                jump_time=jump_time,
+                baseline_gaze_x=baseline_for_detection,
+                eccentricity=eccentricity,
+                velocity_threshold=self.config.velocity_threshold,
+                min_latency_ms=self.config.latency_min_ms,
                 min_duration_samples=self.config.min_velocity_samples
             )
             

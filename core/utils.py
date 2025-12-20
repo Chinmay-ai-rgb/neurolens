@@ -316,6 +316,92 @@ def detect_saccade_onset(
     return None
 
 
+def detect_saccade_onset_robust(
+    gaze_x: np.ndarray,
+    velocities: np.ndarray,
+    timestamps: np.ndarray,
+    jump_time: float,
+    baseline_gaze_x: float,
+    eccentricity: float,
+    velocity_threshold: float = 150.0,
+    displacement_threshold_fraction: float = 0.10,
+    min_displacement_px: float = 30.0,
+    min_latency_ms: float = 50.0,
+    min_duration_samples: int = 2
+) -> Optional[int]:
+    """
+    Robust saccade onset detection using displacement + velocity criteria.
+    
+    This function is designed for webcam-based tracking where noise causes
+    high velocity readings even during fixation. It requires:
+    1. Minimum latency after jump (to avoid anticipatory responses)
+    2. Displacement from baseline in the correct direction
+    3. Velocity above threshold
+    
+    Args:
+        gaze_x: Array of gaze x positions in pixels
+        velocities: Array of velocity magnitudes (absolute x-velocity)
+        timestamps: Array of timestamps
+        jump_time: Time when target jumped
+        baseline_gaze_x: Baseline gaze x position before jump
+        eccentricity: Target eccentricity (target_x - center_x), signed
+        velocity_threshold: Velocity threshold in px/s
+        displacement_threshold_fraction: Fraction of eccentricity for displacement threshold
+        min_displacement_px: Minimum displacement in pixels
+        min_latency_ms: Minimum latency after jump in ms
+        min_duration_samples: Minimum consecutive samples meeting criteria
+    
+    Returns:
+        Index of saccade onset, or None if not detected
+    """
+    if len(gaze_x) < min_duration_samples or len(timestamps) < min_duration_samples:
+        return None
+    
+    if np.isnan(baseline_gaze_x) or eccentricity == 0:
+        return None
+    
+    # Compute displacement threshold
+    displacement_threshold = max(
+        min_displacement_px,
+        abs(eccentricity) * displacement_threshold_fraction
+    )
+    
+    # Expected direction of movement
+    expected_sign = np.sign(eccentricity)
+    
+    # Find start index (skip first min_latency_ms after jump)
+    min_latency_s = min_latency_ms / 1000.0
+    start_idx = 0
+    for i, t in enumerate(timestamps):
+        if t >= jump_time + min_latency_s:
+            start_idx = i
+            break
+    
+    # Search for onset starting from start_idx
+    consecutive = 0
+    for i in range(start_idx, len(gaze_x)):
+        # Compute displacement from baseline
+        displacement = gaze_x[i] - baseline_gaze_x
+        displacement_sign = np.sign(displacement)
+        
+        # Check criteria:
+        # 1. Displacement in correct direction
+        # 2. Displacement magnitude above threshold
+        # 3. Velocity above threshold
+        correct_direction = (displacement_sign == expected_sign)
+        sufficient_displacement = abs(displacement) >= displacement_threshold
+        sufficient_velocity = velocities[i] >= velocity_threshold if i < len(velocities) else False
+        
+        if correct_direction and sufficient_displacement and sufficient_velocity:
+            consecutive += 1
+            if consecutive >= min_duration_samples:
+                return i - min_duration_samples + 1
+        else:
+            consecutive = 0
+    
+    return None
+
+
 def find_peak_velocity(
     velocities: np.ndarray,
     start_idx: int,
