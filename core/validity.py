@@ -56,8 +56,8 @@ class ValidityThresholds:
     antisaccade_latency_min_ms: float = 80.0
     antisaccade_latency_max_ms: float = 1000.0
     
-    # Fixation thresholds
-    fixation_max_deviation_px: float = 100.0
+    # Fixation thresholds (relaxed for webcam-based tracking)
+    fixation_max_deviation_px: float = 300.0  # Increased from 100px for webcam accuracy
     fixation_min_valid_fraction: float = 0.80
     
     # Pursuit thresholds
@@ -65,8 +65,8 @@ class ValidityThresholds:
     pursuit_min_gain: float = 0.3
     pursuit_max_gain: float = 1.5
     
-    # Grid thresholds
-    grid_max_error_px: float = 120.0
+    # Grid thresholds (relaxed for webcam-based tracking)
+    grid_max_error_px: float = 250.0  # Increased from 120px for webcam accuracy
     grid_min_valid_fraction: float = 0.80
     
     # PLR thresholds
