@@ -20,7 +20,26 @@ from tasks import (
     BlinkTask,
 )
 from tasks.base import TaskConfig, TaskResult
+from tasks.fixation import FixationConfig
+from tasks.pursuit import PursuitConfig
+from tasks.saccade import SaccadeConfig
+from tasks.antisaccade import AntisaccadeConfig
+from tasks.plr import PLRConfig
+from tasks.grid9 import Grid9Config
+from tasks.blink import BlinkConfig
 from core.logging import generate_session_id
+
+
+# Map task keys to their config classes
+TASK_CONFIGS = {
+    '1': FixationConfig,
+    '2': PursuitConfig,
+    '3': SaccadeConfig,
+    '4': AntisaccadeConfig,
+    '5': PLRConfig,
+    '6': Grid9Config,
+    '7': BlinkConfig,
+}
 
 
 TASKS = {
@@ -149,8 +168,9 @@ def run_task(task_key: str, fullscreen: bool = False, session_id: Optional[str] 
     task_name, task_class = TASKS[task_key]
     print(f"\nStarting {task_name}...")
     
-    # Create config
-    config = TaskConfig(
+    # Create task-specific config
+    config_class = TASK_CONFIGS.get(task_key, TaskConfig)
+    config = config_class(
         session_id=session_id or generate_session_id(),
         fullscreen=fullscreen
     )
