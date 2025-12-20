@@ -1,5 +1,7 @@
 # NeuroLens+ Research Methods Documentation
 
+**IMPORTANT DISCLAIMER: NeuroLens+ is a research tool, NOT a medical device. It has not been validated for clinical diagnosis. The biomarkers computed are based on established oculomotor research but are measured using consumer webcam hardware, which provides lower accuracy than clinical-grade eye trackers. Results should be interpreted as research-grade approximations, not clinical measurements.**
+
 This document provides research-ready documentation of the biomarkers, validity criteria, calibration procedures, and known limitations of the NeuroLens+ eye tracking platform.
 
 ## 1. Eye Tracking Technology
@@ -104,9 +106,19 @@ Where k=1.14 for 68% confidence, σx/σy are standard deviations, and ρ is corr
 | corrective_saccade_count | count | Secondary saccades within 500ms of landing |
 
 **Saccade Detection Algorithm:**
-1. Onset: First sample where velocity exceeds threshold (30 px/s) in correct direction
+NeuroLens+ uses a robust displacement-based onset detection algorithm designed for webcam tracking:
+1. Onset: First sample (after minimum 50ms latency) where:
+   - Displacement from baseline exceeds threshold (10% of eccentricity or 30px)
+   - Movement is in the correct direction (toward target)
+   - Velocity exceeds threshold (150 px/s for webcam noise tolerance)
 2. Peak: Maximum velocity between onset and landing
 3. Landing: First sample where velocity drops below threshold after peak
+
+**Literature Basis for Thresholds:**
+- Minimum latency (50ms): Anticipatory saccades below ~80ms are typically excluded in research (Fischer & Ramsperger, 1984)
+- Maximum latency (900ms): Permissive cutoff for "missed" responses
+- Typical saccade latency: 150-250ms for visually-guided saccades (Leigh & Zee, 2015)
+- Saccade duration: 20-100ms for moderate amplitudes, follows main sequence (Bahill et al., 1975)
 
 ### 3.3 Anti-Saccade Task Biomarkers
 
@@ -361,9 +373,14 @@ Given identical frame logs, biomarker computation is deterministic. Random eleme
 ## 10. References
 
 1. MediaPipe Face Mesh: https://google.github.io/mediapipe/solutions/face_mesh
-2. Eye Aspect Ratio for blink detection: Soukupová & Čech (2016)
-3. BCEA calculation: Steinman (1965)
-4. Saccade main sequence: Bahill et al. (1975)
+2. Eye Aspect Ratio for blink detection: Soukupová & Čech (2016) "Real-Time Eye Blink Detection using Facial Landmarks"
+3. BCEA calculation: Steinman (1965) "Effect of target size, luminance, and color on monocular fixation"
+4. Saccade main sequence: Bahill, Clark & Stark (1975) "The main sequence, a tool for studying human eye movements"
+5. Anticipatory saccade cutoff: Fischer & Ramsperger (1984) "Human express saccades: extremely short reaction times of goal directed eye movements"
+6. Saccade latency norms: Leigh & Zee (2015) "The Neurology of Eye Movements" (5th ed.)
+7. Smooth pursuit gain: Lisberger, Morris & Tychsen (1987) "Visual motion processing and sensory-motor integration for smooth pursuit eye movements"
+8. Pupillary light reflex: Ellis (1981) "The pupillary light reflex in normal subjects"
+9. Blink rate norms: Bentivoglio et al. (1997) "Analysis of blink rate patterns in normal subjects"
 
 ## 11. Version Information
 
