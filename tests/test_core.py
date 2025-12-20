@@ -361,7 +361,7 @@ class TestValidityChecker:
         face_flags = [1] * 100
         blink_flags = [0] * 100
         fps_values = [30.0] * 100
-        clamp_x = [1] * 20 + [0] * 80  # 20% clamp
+        clamp_x = [1] * 60 + [0] * 40  # 60% clamp_x -> 30% combined rate (above 25% threshold)
         clamp_y = [0] * 100
         valid_flags = [1] * 100
         

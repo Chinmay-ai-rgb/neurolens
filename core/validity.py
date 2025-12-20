@@ -39,9 +39,9 @@ class ValidityThresholds:
     min_fps: float = 15.0
     low_fps_fraction_threshold: float = 0.20
     
-    # Clamp thresholds
-    max_clamp_rate_per_trial: float = 0.05
-    max_clamp_rate_session: float = 0.02
+    # Clamp thresholds (relaxed for webcam-based tracking)
+    max_clamp_rate_per_trial: float = 0.25  # Increased from 0.05 for webcam noise
+    max_clamp_rate_session: float = 0.10  # Increased from 0.02 for webcam noise
     
     # Saccade thresholds
     saccade_latency_min_ms: float = 50.0

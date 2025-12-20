@@ -40,9 +40,9 @@ class SaccadeConfig(TaskConfig):
     post_duration: float = 1.2
     inter_trial_interval: float = 0.5
     
-    # Saccade detection thresholds
-    velocity_threshold: float = 30.0  # px/s for onset detection
-    min_velocity_samples: int = 2  # Consecutive samples above threshold
+    # Saccade detection thresholds (increased for webcam noise)
+    velocity_threshold: float = 150.0  # px/s for onset detection (increased from 30 for webcam noise)
+    min_velocity_samples: int = 3  # Consecutive samples above threshold
     
     # Validity thresholds
     latency_min_ms: float = 50.0
