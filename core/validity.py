@@ -70,10 +70,6 @@ class ValidityThresholds:
     grid_max_error_px: float = 250.0  # Increased from 120px for webcam accuracy
     grid_min_valid_fraction: float = 0.80
     
-    # PLR thresholds
-    plr_min_constriction: float = 0.02  # Minimum pupil change
-    plr_max_latency_ms: float = 500.0
-    
     # Dropout thresholds
     critical_window_dropout_max_ms: float = 100.0
     
@@ -480,55 +476,6 @@ class ValidityChecker:
             result.reason = InvalidReason.VALID
         
         result.details = {'error_px': error_px}
-        result.quality_score = self._compute_quality_score(result)
-        
-        return result
-    
-    def check_plr_validity(
-        self,
-        constriction_amplitude: float,
-        latency_ms: float,
-        generic_validity: TrialValidity
-    ) -> TrialValidity:
-        """
-        Check PLR trial validity.
-        
-        Args:
-            constriction_amplitude: Pupil constriction amplitude
-            latency_ms: Constriction latency in ms
-            generic_validity: Generic validity result
-        
-        Returns:
-            TrialValidity result
-        """
-        result = TrialValidity(
-            face_presence_rate=generic_validity.face_presence_rate,
-            blink_rate=generic_validity.blink_rate,
-            clamp_rate=generic_validity.clamp_rate,
-            fps_median=generic_validity.fps_median,
-            valid_fraction=generic_validity.valid_fraction
-        )
-        
-        if not generic_validity.valid:
-            result.valid = False
-            result.reason = generic_validity.reason
-            result.quality_score = generic_validity.quality_score
-            return result
-        
-        if abs(constriction_amplitude) < self.thresholds.plr_min_constriction:
-            result.reason = InvalidReason.NO_MEANINGFUL_MOVEMENT
-            result.valid = False
-        elif latency_ms > self.thresholds.plr_max_latency_ms:
-            result.reason = InvalidReason.LATENCY_OUT_OF_RANGE
-            result.valid = False
-        else:
-            result.valid = True
-            result.reason = InvalidReason.VALID
-        
-        result.details = {
-            'constriction_amplitude': constriction_amplitude,
-            'latency_ms': latency_ms
-        }
         result.quality_score = self._compute_quality_score(result)
         
         return result

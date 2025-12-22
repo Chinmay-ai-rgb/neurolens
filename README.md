@@ -8,14 +8,13 @@ NeuroLens+ is designed for research applications requiring standardized eye trac
 
 ## Features
 
-- **7 Standardized Eye Tracking Tasks**
+- **6 Standardized Eye Tracking Tasks**
   - Fixation Task - Measure fixation stability
   - Smooth Pursuit Task - Track moving targets
   - Saccade Task - Measure rapid eye movements
   - Anti-Saccade Task - Assess inhibitory control
-  - Pupillary Light Reflex (PLR) - Measure pupil response
-  - 9-Point Gaze Grid - Assess gaze accuracy
-  - Blink Rate Monitoring - Track spontaneous blinks
+  - 9-Point Gaze Grid - Assess gaze accuracy (screen-safe with 10% margins)
+  - Visual Search Task - Covert blink measurement during natural search behavior
 
 - **Research-Grade Features**
   - Per-frame raw signal logging (33 columns)
@@ -94,9 +93,8 @@ python main.py --list
 2. Smooth Pursuit Task
 3. Saccade Task
 4. Anti-Saccade Task
-5. Pupillary Light Reflex (PLR)
-6. 9-Point Gaze Grid
-7. Blink Rate Monitoring
+5. 9-Point Gaze Grid
+6. Visual Search Task
 
 ## Controls
 
@@ -217,9 +215,8 @@ neurolens-plus/
 │   ├── pursuit.py      # Smooth pursuit task
 │   ├── saccade.py      # Saccade task
 │   ├── antisaccade.py  # Anti-saccade task
-│   ├── plr.py          # PLR task
-│   ├── grid9.py        # 9-point grid task
-│   └── blink.py        # Blink monitoring task
+│   ├── grid9.py        # 9-point grid task (screen-safe)
+│   └── visual_search.py # Visual search task (covert blink)
 ├── ui/
 │   └── ui.py           # Pygame UI
 ├── tests/

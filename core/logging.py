@@ -479,27 +479,6 @@ ANTISACCADE_SUMMARY_COLUMNS = [
     'clamp_rate'
 ]
 
-PLR_SUMMARY_COLUMNS = [
-    'trial_id',
-    'trial_start_s',
-    'trial_end_s',
-    'flash_time_s',
-    'constriction_latency_ms',
-    'constriction_amplitude',
-    'constriction_velocity',
-    'dilation_recovery_time_ms',
-    'baseline_pupil_proxy',
-    'min_pupil_proxy',
-    'asymmetry_left_right',
-    'valid_fraction',
-    'valid',
-    'invalid_reason',
-    'quality_score',
-    'calibration_quality',
-    'fps_median',
-    'clamp_rate'
-]
-
 GRID_SUMMARY_COLUMNS = [
     'trial_id',
     'point_name',
@@ -531,15 +510,22 @@ GRID_SESSION_COLUMNS = [
     'quality_score'
 ]
 
-BLINK_SUMMARY_COLUMNS = [
+VISUAL_SEARCH_SUMMARY_COLUMNS = [
     'trial_id',
     'trial_start_s',
     'trial_end_s',
+    'search_duration_s',
+    'target_found',
+    'search_time_ms',
+    'blink_count',
     'blink_rate_per_min',
     'blink_duration_mean_ms',
-    'blink_duration_p95_ms',
+    'blink_duration_std_ms',
     'interblink_interval_mean_s',
-    'blink_irregularity_cv',
+    'interblink_interval_std_s',
+    'interblink_interval_cv',
+    'blink_burstiness',
+    'gaze_presence_pct',
     'valid_fraction',
     'valid',
     'invalid_reason',

@@ -4,16 +4,14 @@ from .fixation import FixationTask
 from .pursuit import PursuitTask
 from .saccade import SaccadeTask
 from .antisaccade import AntisaccadeTask
-from .plr import PLRTask
 from .grid9 import Grid9Task
-from .blink import BlinkTask
+from .visual_search import VisualSearchTask
 
 __all__ = [
     "FixationTask",
     "PursuitTask",
     "SaccadeTask",
     "AntisaccadeTask",
-    "PLRTask",
     "Grid9Task",
-    "BlinkTask",
+    "VisualSearchTask",
 ]

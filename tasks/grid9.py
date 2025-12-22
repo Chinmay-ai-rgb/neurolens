@@ -18,25 +18,42 @@ class Grid9Config(TaskConfig):
     # Dwell time per point
     dwell_time: float = 2.0
     
-    # Grid positions (normalized)
+    # Grid positions (normalized) - will be computed with safe margins
     grid_positions: List[Tuple[str, float, float]] = None
     
+    # Safe margin (fraction of screen) - ensures all points visible
+    safe_margin: float = 0.10  # 10% margin from edges
+    
     # Accuracy thresholds
-    max_error_px: float = 120.0
+    max_error_px: float = 250.0  # Relaxed for webcam accuracy
+    
+    # Minimum screen dimensions required
+    min_screen_width: int = 800
+    min_screen_height: int = 600
     
     def __post_init__(self):
         super().__post_init__()
+        # Compute grid positions with safe margins
+        # Positions are normalized [0, 1] but constrained to [margin, 1-margin]
+        margin = self.safe_margin
+        left = margin
+        center_x = 0.5
+        right = 1.0 - margin
+        top = margin
+        center_y = 0.5
+        bottom = 1.0 - margin
+        
         if self.grid_positions is None:
             self.grid_positions = [
-                ('center', 0.5, 0.5),
-                ('top_left', 0.2, 0.2),
-                ('top_center', 0.5, 0.2),
-                ('top_right', 0.8, 0.2),
-                ('middle_left', 0.2, 0.5),
-                ('middle_right', 0.8, 0.5),
-                ('bottom_left', 0.2, 0.8),
-                ('bottom_center', 0.5, 0.8),
-                ('bottom_right', 0.8, 0.8),
+                ('center', center_x, center_y),
+                ('top_left', left, top),
+                ('top_center', center_x, top),
+                ('top_right', right, top),
+                ('middle_left', left, center_y),
+                ('middle_right', right, center_y),
+                ('bottom_left', left, bottom),
+                ('bottom_center', center_x, bottom),
+                ('bottom_right', right, bottom),
             ]
 
 
@@ -83,6 +100,21 @@ class Grid9Task(BaseTask):
     def run_task(self) -> TaskResult:
         """Run the 9-point grid task."""
         result = TaskResult()
+        
+        # Validate screen dimensions
+        if not self._validate_screen_dimensions():
+            result.success = False
+            result.errors.append(
+                f"Screen too small: {self.config.screen_width}x{self.config.screen_height}. "
+                f"Minimum required: {self.config.min_screen_width}x{self.config.min_screen_height}"
+            )
+            return result
+        
+        # Validate all grid points are on-screen
+        if not self._validate_grid_positions():
+            result.success = False
+            result.errors.append("One or more grid points would be off-screen")
+            return result
         
         # Use 9-point calibration for this task
         self.config.calibration_mode = '9_point'
@@ -405,3 +437,52 @@ class Grid9Task(BaseTask):
             meta.fps_max = np.max(all_fps)
         
         meta.save(f"{self.session_dir}/meta.json")
+    
+    def _validate_screen_dimensions(self) -> bool:
+        """Validate that screen dimensions meet minimum requirements.
+        
+        Returns:
+            True if screen is large enough, False otherwise
+        """
+        return (
+            self.config.screen_width >= self.config.min_screen_width and
+            self.config.screen_height >= self.config.min_screen_height
+        )
+    
+    def _validate_grid_positions(self) -> bool:
+        """Validate that all grid points are on-screen.
+        
+        Returns:
+            True if all points are on-screen, False otherwise
+        """
+        min_margin_px = 20  # Minimum pixels from edge
+        
+        for point_name, x_norm, y_norm in self.config.grid_positions:
+            x_px = x_norm * self.config.screen_width
+            y_px = y_norm * self.config.screen_height
+            
+            # Check if point is within safe bounds
+            if (x_px < min_margin_px or 
+                x_px > self.config.screen_width - min_margin_px or
+                y_px < min_margin_px or 
+                y_px > self.config.screen_height - min_margin_px):
+                self.debug_logger.warning(
+                    f"Grid point {point_name} at ({x_px:.0f}, {y_px:.0f}) is too close to screen edge"
+                )
+                return False
+        
+        return True
+    
+    def _log_viewport_info(self):
+        """Log viewport size and grid positions for QC and reproducibility."""
+        self.debug_logger.info(
+            f"Viewport: {self.config.screen_width}x{self.config.screen_height}"
+        )
+        self.debug_logger.info(f"Safe margin: {self.config.safe_margin * 100:.0f}%")
+        
+        for point_name, x_norm, y_norm in self.config.grid_positions:
+            x_px = x_norm * self.config.screen_width
+            y_px = y_norm * self.config.screen_height
+            self.debug_logger.info(
+                f"Grid point {point_name}: ({x_px:.0f}, {y_px:.0f}) px"
+            )

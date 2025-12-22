@@ -15,18 +15,16 @@ from tasks import (
     PursuitTask,
     SaccadeTask,
     AntisaccadeTask,
-    PLRTask,
     Grid9Task,
-    BlinkTask,
+    VisualSearchTask,
 )
 from tasks.base import TaskConfig, TaskResult
 from tasks.fixation import FixationConfig
 from tasks.pursuit import PursuitConfig
 from tasks.saccade import SaccadeConfig
 from tasks.antisaccade import AntisaccadeConfig
-from tasks.plr import PLRConfig
 from tasks.grid9 import Grid9Config
-from tasks.blink import BlinkConfig
+from tasks.visual_search import VisualSearchConfig
 from core.logging import generate_session_id
 
 
@@ -36,9 +34,8 @@ TASK_CONFIGS = {
     '2': PursuitConfig,
     '3': SaccadeConfig,
     '4': AntisaccadeConfig,
-    '5': PLRConfig,
-    '6': Grid9Config,
-    '7': BlinkConfig,
+    '5': Grid9Config,
+    '6': VisualSearchConfig,
 }
 
 
@@ -47,9 +44,8 @@ TASKS = {
     '2': ('Smooth Pursuit Task', PursuitTask),
     '3': ('Saccade Task', SaccadeTask),
     '4': ('Anti-Saccade Task', AntisaccadeTask),
-    '5': ('Pupillary Light Reflex (PLR)', PLRTask),
-    '6': ('9-Point Gaze Grid', Grid9Task),
-    '7': ('Blink Rate Monitoring', BlinkTask),
+    '5': ('9-Point Gaze Grid', Grid9Task),
+    '6': ('Visual Search Task', VisualSearchTask),
 }
 
 
@@ -103,7 +99,7 @@ def run_menu():
                     pygame.quit()
                     return None
                 elif event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, 
-                                   pygame.K_5, pygame.K_6, pygame.K_7]:
+                                   pygame.K_5, pygame.K_6]:
                     key_num = str(event.key - pygame.K_0)
                     if key_num in TASKS:
                         pygame.quit()
@@ -258,8 +254,8 @@ def main():
     
     parser.add_argument(
         '-t', '--task',
-        choices=['1', '2', '3', '4', '5', '6', '7', 'all'],
-        help='Task to run (1-7 or "all")'
+        choices=['1', '2', '3', '4', '5', '6', 'all'],
+        help='Task to run (1-6 or "all")'
     )
     
     parser.add_argument(
