@@ -10,7 +10,7 @@ from enum import Enum
 from .base import BaseTask, TaskConfig, TaskResult
 from core.logging import FrameLogger, SummaryLogger, ANTISACCADE_SUMMARY_COLUMNS
 from core.validity import InvalidReason
-from core.utils import detect_saccade_onset, find_peak_velocity
+from core.utils import detect_saccade_onset, find_peak_velocity, detect_saccade_onset_robust
 
 
 class AntisaccadeState(Enum):
@@ -202,6 +202,7 @@ class AntisaccadeTask(BaseTask):
         post_gaze_x = []
         post_vel_x = []
         post_timestamps = []
+        fore_gaze_x = []  # Track baseline gaze during foreperiod
         
         stimulus_time = None
         state = AntisaccadeState.FORE
@@ -225,6 +226,10 @@ class AntisaccadeTask(BaseTask):
             
             frame_data = self.process_frame_with_mapping(frame, current_time)
             self.log_frame(trial_idx, state.value, center_x, center_y, frame_data)
+            
+            # Collect baseline gaze during foreperiod
+            if frame_data.get('valid_sample', 0) == 1:
+                fore_gaze_x.append(frame_data.get('gaze_x_px_comp', np.nan))
             
             self.ui.clear_screen()
             self.ui.draw_target(center_x, center_y)
@@ -285,11 +290,14 @@ class AntisaccadeTask(BaseTask):
         
         trial_end = time.time()
         
+        # Compute baseline gaze from foreperiod
+        baseline_gaze_x = np.nanmean(fore_gaze_x) if fore_gaze_x else center_x
+        
         # Compute biomarkers
         trial_data = self._compute_biomarkers(
             trial_idx, direction, center_x, center_y, stimulus_x, target_x,
             trial_start, trial_end, stimulus_time,
-            post_gaze_x, post_vel_x, post_timestamps
+            post_gaze_x, post_vel_x, post_timestamps, baseline_gaze_x
         )
         
         time.sleep(self.config.inter_trial_interval)
@@ -309,7 +317,8 @@ class AntisaccadeTask(BaseTask):
         stimulus_time: float,
         gaze_x: List[float],
         vel_x: List[float],
-        timestamps: List[float]
+        timestamps: List[float],
+        baseline_gaze_x: float
     ) -> Dict[str, Any]:
         """Compute antisaccade biomarkers."""
         
@@ -323,6 +332,9 @@ class AntisaccadeTask(BaseTask):
         stimulus_direction = np.sign(stimulus_x - center_x)  # Direction TO stimulus
         correct_direction = -stimulus_direction  # Opposite direction
         
+        # Eccentricity for correct response (opposite of stimulus)
+        correct_eccentricity = (target_x - center_x)  # Distance to correct target
+        
         latency_ms = np.nan
         direction_error = 0
         correction_time_ms = np.nan
@@ -332,46 +344,101 @@ class AntisaccadeTask(BaseTask):
         landing_error = np.nan
         
         if len(gaze_x) >= 3:
-            vel_x_abs = np.abs(vel_x)
+            vel_mag = np.sqrt(vel_x**2)  # Use magnitude for onset detection
             
-            # Detect first saccade
-            onset_idx = detect_saccade_onset(
-                vel_x_abs, timestamps,
-                threshold=self.config.velocity_threshold
+            # Use robust onset detection - detect any significant movement from baseline
+            # For antisaccade, we detect movement in EITHER direction first
+            # Try detecting movement toward correct target first
+            onset_idx = detect_saccade_onset_robust(
+                gaze_x, vel_mag, timestamps,
+                jump_time=stimulus_time,
+                baseline_gaze_x=baseline_gaze_x,
+                eccentricity=correct_eccentricity,  # Try correct direction first
+                velocity_threshold=150.0,  # Higher threshold for webcam noise
+                displacement_threshold_fraction=0.10,
+                min_displacement_px=30.0,
+                min_latency_ms=50.0,
+                min_duration_samples=2
             )
+            
+            # If no correct saccade found, try detecting error saccade (toward stimulus)
+            error_onset_idx = None
+            if onset_idx is None:
+                error_onset_idx = detect_saccade_onset_robust(
+                    gaze_x, vel_mag, timestamps,
+                    jump_time=stimulus_time,
+                    baseline_gaze_x=baseline_gaze_x,
+                    eccentricity=-correct_eccentricity,  # Opposite direction (toward stimulus)
+                    velocity_threshold=150.0,
+                    displacement_threshold_fraction=0.10,
+                    min_displacement_px=30.0,
+                    min_latency_ms=50.0,
+                    min_duration_samples=2
+                )
+            
+            # Determine which saccade was detected first
+            if onset_idx is not None and error_onset_idx is not None:
+                # Both detected - use the earlier one
+                if timestamps[error_onset_idx] < timestamps[onset_idx]:
+                    onset_idx = error_onset_idx
+                    direction_error = 1
+                    inhibition_success = 0
+                else:
+                    direction_error = 0
+                    inhibition_success = 1
+            elif onset_idx is not None:
+                # Correct saccade detected
+                direction_error = 0
+                inhibition_success = 1
+            elif error_onset_idx is not None:
+                # Error saccade detected
+                onset_idx = error_onset_idx
+                direction_error = 1
+                inhibition_success = 0
             
             if onset_idx is not None and onset_idx < len(timestamps):
                 onset_time = timestamps[onset_idx]
                 latency_ms = (onset_time - stimulus_time) * 1000
                 
-                # Determine initial saccade direction
-                # Look at velocity sign at onset
-                initial_vel_sign = np.sign(vel_x[onset_idx])
-                
-                # Check if initial movement was toward stimulus (error)
-                if initial_vel_sign == stimulus_direction:
-                    direction_error = 1
-                    inhibition_success = 0
-                    
-                    # Look for correction
-                    for i in range(onset_idx + 1, len(vel_x)):
-                        if np.sign(vel_x[i]) == correct_direction and vel_x_abs[i] > self.config.velocity_threshold:
+                # If direction error, look for correction
+                if direction_error == 1:
+                    for i in range(onset_idx + 1, len(gaze_x)):
+                        displacement = (gaze_x[i] - baseline_gaze_x) * correct_direction
+                        if displacement > 30.0 and vel_mag[i] > 150.0:
                             correction_time_ms = (timestamps[i] - onset_time) * 1000
                             break
+                
+                # Find landing using max displacement (same as saccade task)
+                max_duration_samples = int(0.4 * 30)  # ~400ms at 30fps
+                search_end = min(onset_idx + max_duration_samples, len(gaze_x))
+                
+                onset_gaze_x = gaze_x[onset_idx]
+                max_displacement = 0
+                landing_idx = onset_idx
+                
+                # For antisaccade, expected direction depends on whether it was correct or error
+                if direction_error == 1:
+                    expected_sign = stimulus_direction  # Error = toward stimulus
                 else:
-                    direction_error = 0
-                    inhibition_success = 1
+                    expected_sign = correct_direction  # Correct = away from stimulus
                 
-                # Peak velocity
-                peak_vel, peak_idx = find_peak_velocity(vel_x_abs, onset_idx, len(vel_x_abs))
-                peak_velocity = peak_vel
-                
-                # Find landing
-                landing_idx = peak_idx
-                for i in range(peak_idx, len(vel_x_abs)):
-                    if vel_x_abs[i] < self.config.velocity_threshold:
+                for i in range(onset_idx, search_end):
+                    displacement = (gaze_x[i] - onset_gaze_x) * expected_sign
+                    if displacement > max_displacement:
+                        max_displacement = displacement
                         landing_idx = i
-                        break
+                
+                # Peak velocity using 95th percentile
+                if landing_idx > onset_idx:
+                    vel_window = vel_mag[onset_idx:landing_idx+1]
+                    if len(vel_window) > 0:
+                        peak_velocity = np.percentile(vel_window, 95)
+                    else:
+                        peak_vel, _ = find_peak_velocity(vel_mag, onset_idx, len(vel_mag))
+                        peak_velocity = peak_vel
+                else:
+                    peak_vel, _ = find_peak_velocity(vel_mag, onset_idx, len(vel_mag))
+                    peak_velocity = peak_vel
                 
                 if landing_idx < len(gaze_x):
                     landing_gaze = gaze_x[landing_idx]
