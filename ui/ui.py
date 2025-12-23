@@ -113,17 +113,43 @@ class NeuroLensUI:
     def _setup_display(self):
         """Set up pygame display."""
         flags = pygame.DOUBLEBUF
+        
+        # Get actual display dimensions
+        info = pygame.display.Info()
+        display_width = info.current_w
+        display_height = info.current_h
+        
         if self.config.fullscreen:
             flags |= pygame.FULLSCREEN
-            info = pygame.display.Info()
-            self.config.screen_width = info.current_w
-            self.config.screen_height = info.current_h
+            # Use full display size
+            requested_width = display_width
+            requested_height = display_height
+        else:
+            # In windowed mode, clamp window size to fit display (with 5% margin)
+            # This ensures the window is fully visible on any screen
+            max_width = int(display_width * 0.95)
+            max_height = int(display_height * 0.95)
+            
+            # Use the smaller of requested size or max size
+            requested_width = min(self.config.screen_width, max_width)
+            requested_height = min(self.config.screen_height, max_height)
         
         self.screen = pygame.display.set_mode(
-            (self.config.screen_width, self.config.screen_height),
+            (requested_width, requested_height),
             flags
         )
         pygame.display.set_caption("NeuroLens+")
+        
+        # CRITICAL: Always update config from actual surface size
+        # This ensures all coordinate calculations use the real drawable area
+        actual_size = self.screen.get_size()
+        self.config.screen_width = actual_size[0]
+        self.config.screen_height = actual_size[1]
+        
+        # Log the dimensions for debugging
+        print(f"[NeuroLens+] Display: {display_width}x{display_height}, "
+              f"Window: {actual_size[0]}x{actual_size[1]}, "
+              f"Fullscreen: {self.config.fullscreen}")
         
         # Hide mouse cursor during tasks
         pygame.mouse.set_visible(False)

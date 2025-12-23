@@ -389,7 +389,7 @@ class Grid9Task(BaseTask):
                 fps=frame_data.get('fps_est', 30.0),
                 quality_score=frame_data.get('valid_sample', 0),
                 trial_count=self.current_trial,
-                total_trials=len(self.config.grid_positions)
+                total_trials=9  # Fixed: 9-point grid always has 9 points
             )
             self.ui.draw_quality_indicators()
             
@@ -537,7 +537,7 @@ class Grid9Task(BaseTask):
             self.config.screen_height,
             config={
                 'task': self.TASK_NAME,
-                'n_points': len(self.config.grid_positions),
+                'n_points': 9,  # Fixed: 9-point grid always has 9 points
                 'dwell_time': self.config.dwell_time,
             }
         )
