@@ -332,6 +332,149 @@ All 62 tests pass after changes:
 
 ---
 
+## Update: December 2024 - ML-Ready Pipeline
+
+### Priority 1: 9-Point Grid Fix (URGENT)
+
+**Problem**: User reported only 1-2 dots visible on screen despite previous safe margin implementation.
+
+**Root Cause**: Grid positions were computed in `Grid9Config.__post_init__()` using default screen dimensions (1920x1080), not actual screen dimensions which are only known after UI initialization.
+
+**Solution**:
+1. Removed grid position computation from `__post_init__`
+2. Added `_compute_grid_positions()` method that computes positions dynamically at runtime
+3. Positions now computed in pixels directly from actual screen dimensions
+4. Added debug overlay showing all 9 dots with coordinates and safe bounds rectangle
+5. Added preflight validation that blocks task start if any dot would be off-screen
+
+**New Features**:
+- `debug_overlay` config option (default: True) shows all dots before task starts
+- User must press SPACE to confirm all dots are visible
+- Console logs show computed bounds and positions
+
+### Priority 2: Visual Search Blink Task Fixes
+
+**Changes**:
+1. **Blink Duration Proxy**: Renamed `blink_duration_mean_ms` to `blink_duration_proxy_mean_ms` to indicate webcam-based measurement limitations
+2. **Valid Duration Range**: Only durations 80-500ms are counted as valid (physiologically plausible)
+3. **Blink Rate Confidence**: Added `blink_rate_confidence` field (HIGH if trial >= 10s, LOW otherwise)
+4. **QC Status**: Added `qc_status` field (PASS / WARN / FAIL)
+5. **QC Flags**: Added `qc_flags` field with comma-separated list of issues
+6. **Session Aggregation**: Added session-level biomarker aggregation across trials
+
+**QC Flags Implemented**:
+- `short_trial_duration`: Trial < 10 seconds
+- `insufficient_blinks`: Fewer than minimum required blinks
+- `low_gaze_presence`: Gaze presence < 50%
+- `low_valid_fraction`: Valid sample fraction < 70%
+- `high_clamp_rate`: Clamp rate > 25%
+- `low_fps`: FPS < 15
+- `many_invalid_blink_durations`: >50% of blinks outside valid duration range
+
+### Priority 3: ML-Ready Plumbing
+
+**Created Files**:
+
+1. **`schemas/session_schema.json`**: Canonical JSON schema for session data
+   - All biomarkers with units and valid ranges
+   - Type definitions for ML pipeline
+   - Documentation of typical ranges
+
+2. **`tools/validate_session.py`**: Session validation script
+   - Checks all required tasks completed
+   - Validates QC thresholds
+   - Returns PASS/WARN/FAIL status
+   - Usage: `python tools/validate_session.py --session data/sessions/20251220_123456`
+
+3. **`analysis/run_inference_stub.py`**: Inference stub for future ML integration
+   - Reads session data
+   - Computes biomarkers and derived features
+   - Generates results.json with standardized format
+   - Usage: `python analysis/run_inference_stub.py --session data/sessions/20251220_123456`
+
+**Updated Files**:
+- `tools/build_dataset.py`: Updated to include new Visual Search QC fields
+
+### Priority 4: Results.JSON Contract
+
+Implemented in `analysis/run_inference_stub.py`. Output format:
+
+```json
+{
+  "version": "1.0.0",
+  "generated_at": "2024-12-23T00:00:00Z",
+  "session_id": "20251220_123456",
+  "overall": {
+    "status": "ALL_CLEAR | POSSIBLE_CONCERN | INSUFFICIENT_DATA",
+    "confidence_score": 0.85,
+    "tasks_completed": 6,
+    "tasks_required": 6
+  },
+  "qc_summary": {
+    "validation_status": "PASS | WARN | FAIL",
+    "calibration_accepted": true,
+    "calibration_error_px": 50.0,
+    "fps_mean": 28.5,
+    "failed_checks": [],
+    "warnings": []
+  },
+  "per_task_metrics": { ... },
+  "derived_scores": {
+    "oculomotor_health_score": 0.75,
+    "inhibitory_control_index": 0.85,
+    ...
+  },
+  "flags": [ ... ],
+  "disclaimer": "..."
+}
+```
+
+### Priority 5: Normative Baseline Layer
+
+**Created Files**:
+
+1. **`data/norms.json`**: Normative data for all biomarkers
+   - Mean and standard deviation per biomarker
+   - Units and direction (lower_is_better, higher_is_better, etc.)
+   - Clinical notes and typical ranges
+   - Based on literature values for healthy adults (18-65 years)
+
+2. **`models/normative_baseline.py`**: Z-score computation module
+   - `NormativeBaseline` class for loading norms
+   - `compute_z_scores()` for all biomarkers
+   - `flag_outliers()` for detecting concerning values
+   - `compute_composite_score()` for overall health score
+   - `generate_report()` for comprehensive normative report
+
+**Usage**:
+```python
+from models.normative_baseline import NormativeBaseline
+
+baseline = NormativeBaseline()
+z_scores = baseline.compute_z_scores(session_biomarkers)
+outliers = baseline.flag_outliers(session_biomarkers, threshold=2.0)
+report = baseline.generate_report(session_biomarkers)
+```
+
+---
+
+## Files Changed (This Update)
+
+### Created
+- `schemas/session_schema.json` - Canonical session schema
+- `tools/validate_session.py` - Session validation script
+- `analysis/run_inference_stub.py` - Inference stub
+- `models/normative_baseline.py` - Z-score computation
+- `data/norms.json` - Normative baseline data
+
+### Modified
+- `tasks/grid9.py` - Dynamic grid position computation, debug overlay
+- `tasks/visual_search.py` - QC flags, session aggregation, proxy labeling
+- `tools/build_dataset.py` - Updated Visual Search biomarker names
+- `FEATURE_DICTIONARY.md` - Added Visual Search QC documentation
+
+---
+
 ## Conclusion
 
 NeuroLens+ has been audited and corrected to ensure:
@@ -340,5 +483,11 @@ NeuroLens+ has been audited and corrected to ensure:
 - Biomarkers complement each other for neurological assessment
 - Data pipeline is complete and ML-ready
 - System is ready for research use (NOT clinical diagnosis)
+
+**New in this update**:
+- 9-point grid now dynamically computes positions at runtime with debug overlay
+- Visual Search task has comprehensive QC flags and session-level aggregation
+- Full ML-ready pipeline with schema, validation, and inference stub
+- Normative baseline layer enables immediate z-score computation without labels
 
 The platform now provides a solid foundation for webcam-based oculomotor research, with appropriate disclaimers about its limitations compared to clinical eye trackers.

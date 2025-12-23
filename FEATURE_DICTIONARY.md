@@ -195,17 +195,32 @@ NeuroLens+ collects oculomotor and blink biomarkers across 6 standardized tasks.
 
 ## Visual Search Task Biomarkers (Covert Blink Measurement)
 
+**Note**: Visual Search task measures blinks covertly during a visual search task. The user is NOT told about blink measurement to avoid behavioral cueing (Hawthorne effect).
+
 ### blink_rate_per_min
 - **Units**: blinks per minute
 - **Computation**: Count of blinks / duration in minutes
 - **Normal Range**: 15-20 blinks/min at rest
 - **Clinical Relevance**: Reduced rate may indicate Parkinson's disease; elevated rate may indicate fatigue or dry eye
 
-### blink_duration_mean_ms
+### blink_rate_confidence
+- **Units**: categorical (HIGH / LOW)
+- **Computation**: HIGH if trial duration >= 10 seconds, LOW otherwise
+- **Clinical Relevance**: Short trials produce unreliable blink rate estimates
+- **ML Note**: Down-weight or exclude LOW confidence trials in analysis
+
+### blink_duration_proxy_mean_ms
 - **Units**: milliseconds
-- **Computation**: Mean duration of eye closure during blinks
+- **Computation**: Mean duration of eye closure during blinks (proxy measurement)
+- **Valid Range**: 80-500 ms (durations outside this range are excluded)
 - **Normal Range**: 100-400 ms
 - **Clinical Relevance**: Prolonged blinks may indicate fatigue or neurological issues
+- **Note**: Labeled as "proxy" because webcam-based detection has limited temporal resolution
+
+### blink_duration_valid_count
+- **Units**: count
+- **Computation**: Number of blinks with duration in valid range (80-500ms)
+- **Clinical Relevance**: Low count relative to total blinks indicates measurement issues
 
 ### interblink_interval_mean_s
 - **Units**: seconds
@@ -230,6 +245,25 @@ NeuroLens+ collects oculomotor and blink biomarkers across 6 standardized tasks.
 - **Computation**: Fraction of time with valid gaze tracking
 - **Normal Range**: > 80%
 - **Clinical Relevance**: Engagement and tracking quality metric
+
+### qc_status
+- **Units**: categorical (PASS / WARN / FAIL)
+- **Computation**: Based on multiple QC checks (see qc_flags)
+- **PASS**: All QC checks passed
+- **WARN**: Minor issues detected (e.g., short trial, high clamp rate)
+- **FAIL**: Major issues detected (e.g., insufficient blinks, low gaze presence)
+
+### qc_flags
+- **Units**: comma-separated string
+- **Computation**: List of QC issues detected
+- **Possible Flags**:
+  - `short_trial_duration`: Trial < 10 seconds
+  - `insufficient_blinks`: Fewer than minimum required blinks
+  - `low_gaze_presence`: Gaze presence < 50%
+  - `low_valid_fraction`: Valid sample fraction < 70%
+  - `high_clamp_rate`: Clamp rate > 25%
+  - `low_fps`: FPS < 15
+  - `many_invalid_blink_durations`: >50% of blinks outside valid duration range
 
 ---
 

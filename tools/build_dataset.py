@@ -67,11 +67,14 @@ TASK_BIOMARKERS = {
     ],
     'visual_search': [
         'blink_rate_per_min',
-        'blink_duration_mean_ms',
+        'blink_duration_proxy_mean_ms',  # Updated: proxy measurement
+        'blink_duration_valid_count',
         'interblink_interval_mean_s',
         'interblink_interval_cv',
         'blink_burstiness',
         'gaze_presence_pct',
+        'qc_status',
+        'blink_rate_confidence',
     ],
 }
 

@@ -18,9 +18,6 @@ class Grid9Config(TaskConfig):
     # Dwell time per point
     dwell_time: float = 2.0
     
-    # Grid positions (normalized) - will be computed with safe margins
-    grid_positions: List[Tuple[str, float, float]] = None
-    
     # Safe margin (fraction of screen) - ensures all points visible
     safe_margin: float = 0.10  # 10% margin from edges
     
@@ -31,30 +28,11 @@ class Grid9Config(TaskConfig):
     min_screen_width: int = 800
     min_screen_height: int = 600
     
+    # Debug mode - show grid bounds and coordinates
+    debug_overlay: bool = True
+    
     def __post_init__(self):
         super().__post_init__()
-        # Compute grid positions with safe margins
-        # Positions are normalized [0, 1] but constrained to [margin, 1-margin]
-        margin = self.safe_margin
-        left = margin
-        center_x = 0.5
-        right = 1.0 - margin
-        top = margin
-        center_y = 0.5
-        bottom = 1.0 - margin
-        
-        if self.grid_positions is None:
-            self.grid_positions = [
-                ('center', center_x, center_y),
-                ('top_left', left, top),
-                ('top_center', center_x, top),
-                ('top_right', right, top),
-                ('middle_left', left, center_y),
-                ('middle_right', right, center_y),
-                ('bottom_left', left, bottom),
-                ('bottom_center', center_x, bottom),
-                ('bottom_right', right, bottom),
-            ]
 
 
 class Grid9Task(BaseTask):
@@ -97,6 +75,124 @@ class Grid9Task(BaseTask):
         """Get summary CSV columns."""
         return GRID_SUMMARY_COLUMNS
     
+    def _compute_grid_positions(self) -> List[Tuple[str, float, float]]:
+        """
+        Compute grid positions dynamically based on actual screen dimensions.
+        
+        Uses safe margins to ensure all points are visible on any screen size.
+        Positions are returned as pixel coordinates, not normalized.
+        
+        Returns:
+            List of (point_name, x_px, y_px) tuples
+        """
+        margin = self.config.safe_margin
+        
+        # Compute safe bounds in pixels
+        left_px = int(self.config.screen_width * margin)
+        right_px = int(self.config.screen_width * (1.0 - margin))
+        top_px = int(self.config.screen_height * margin)
+        bottom_px = int(self.config.screen_height * (1.0 - margin))
+        center_x_px = self.config.screen_width // 2
+        center_y_px = self.config.screen_height // 2
+        
+        # Log the computed bounds
+        if self.debug_logger:
+            self.debug_logger.info(
+                f"Grid bounds: screen={self.config.screen_width}x{self.config.screen_height}, "
+                f"margin={margin*100:.0f}%, "
+                f"left={left_px}, right={right_px}, top={top_px}, bottom={bottom_px}"
+            )
+        
+        # 9 points in standard grid pattern
+        positions = [
+            ('center', center_x_px, center_y_px),
+            ('top_left', left_px, top_px),
+            ('top_center', center_x_px, top_px),
+            ('top_right', right_px, top_px),
+            ('middle_left', left_px, center_y_px),
+            ('middle_right', right_px, center_y_px),
+            ('bottom_left', left_px, bottom_px),
+            ('bottom_center', center_x_px, bottom_px),
+            ('bottom_right', right_px, bottom_px),
+        ]
+        
+        return positions
+    
+    def _show_debug_overlay(self, grid_positions: List[Tuple[str, float, float]]):
+        """
+        Show debug overlay with grid bounds and dot coordinates.
+        
+        Args:
+            grid_positions: List of (point_name, x_px, y_px) tuples
+        """
+        margin = self.config.safe_margin
+        left_px = int(self.config.screen_width * margin)
+        right_px = int(self.config.screen_width * (1.0 - margin))
+        top_px = int(self.config.screen_height * margin)
+        bottom_px = int(self.config.screen_height * (1.0 - margin))
+        
+        self.ui.clear_screen()
+        
+        # Draw safe bounds rectangle
+        import pygame
+        pygame.draw.rect(
+            self.ui.screen,
+            (100, 100, 100),  # Gray
+            (left_px, top_px, right_px - left_px, bottom_px - top_px),
+            2  # Line width
+        )
+        
+        # Draw all 9 dots
+        for point_name, x_px, y_px in grid_positions:
+            # Draw dot
+            pygame.draw.circle(
+                self.ui.screen,
+                (255, 255, 255),  # White
+                (int(x_px), int(y_px)),
+                12
+            )
+            # Draw label
+            self.ui.draw_text(
+                f"{point_name}: ({int(x_px)}, {int(y_px)})",
+                int(x_px),
+                int(y_px) + 25,
+                font_size="small",
+                color=(200, 200, 200)
+            )
+        
+        # Draw screen info
+        self.ui.draw_text(
+            f"Screen: {self.config.screen_width}x{self.config.screen_height}",
+            self.config.screen_width // 2,
+            30,
+            font_size="medium"
+        )
+        self.ui.draw_text(
+            f"Safe margin: {margin*100:.0f}% ({left_px}px from edges)",
+            self.config.screen_width // 2,
+            60,
+            font_size="small"
+        )
+        self.ui.draw_text(
+            "DEBUG: All 9 dots should be visible. Press SPACE to continue.",
+            self.config.screen_width // 2,
+            self.config.screen_height - 30,
+            font_size="small",
+            color=(0, 230, 118)
+        )
+        
+        self.ui.update_display()
+        
+        # Wait for user to confirm
+        while self.ui.running:
+            events = self.ui.process_events()
+            if events['quit']:
+                self.running = False
+                return
+            if events['space']:
+                return
+            self.ui.tick(60)
+    
     def run_task(self) -> TaskResult:
         """Run the 9-point grid task."""
         result = TaskResult()
@@ -110,11 +206,39 @@ class Grid9Task(BaseTask):
             )
             return result
         
+        # Compute grid positions dynamically based on actual screen size
+        grid_positions = self._compute_grid_positions()
+        
         # Validate all grid points are on-screen
-        if not self._validate_grid_positions():
+        validation_errors = self._validate_grid_positions_px(grid_positions)
+        if validation_errors:
             result.success = False
-            result.errors.append("One or more grid points would be off-screen")
+            result.errors.extend(validation_errors)
+            # Show error to user
+            self.ui.clear_screen()
+            self.ui.draw_text(
+                "ERROR: Grid points out of bounds",
+                self.config.screen_width // 2,
+                self.config.screen_height // 2 - 50,
+                font_size="large",
+                color=(255, 82, 82)
+            )
+            for i, err in enumerate(validation_errors[:3]):
+                self.ui.draw_text(
+                    err,
+                    self.config.screen_width // 2,
+                    self.config.screen_height // 2 + i * 30,
+                    font_size="small"
+                )
+            self.ui.update_display()
+            time.sleep(3)
             return result
+        
+        # Show debug overlay if enabled
+        if self.config.debug_overlay:
+            self._show_debug_overlay(grid_positions)
+            if not self.running or not self.ui.running:
+                return result
         
         # Use 9-point calibration for this task
         self.config.calibration_mode = '9_point'
@@ -145,15 +269,12 @@ class Grid9Task(BaseTask):
         all_gaze_x = []
         all_gaze_y = []
         
-        for point_idx, (point_name, x_norm, y_norm) in enumerate(self.config.grid_positions):
+        for point_idx, (point_name, target_x, target_y) in enumerate(grid_positions):
             if not self.ui.running or not self.running:
                 break
             
             self.current_trial = point_idx + 1
             self.clear_trial_buffer()
-            
-            target_x = x_norm * self.config.screen_width
-            target_y = y_norm * self.config.screen_height
             
             point_data = self._run_point(point_idx, point_name, target_x, target_y)
             
@@ -449,40 +570,52 @@ class Grid9Task(BaseTask):
             self.config.screen_height >= self.config.min_screen_height
         )
     
-    def _validate_grid_positions(self) -> bool:
+    def _validate_grid_positions_px(self, grid_positions: List[Tuple[str, float, float]]) -> List[str]:
         """Validate that all grid points are on-screen.
         
+        Args:
+            grid_positions: List of (point_name, x_px, y_px) tuples
+        
         Returns:
-            True if all points are on-screen, False otherwise
+            List of error messages (empty if all valid)
         """
+        errors = []
         min_margin_px = 20  # Minimum pixels from edge
         
-        for point_name, x_norm, y_norm in self.config.grid_positions:
-            x_px = x_norm * self.config.screen_width
-            y_px = y_norm * self.config.screen_height
-            
+        for point_name, x_px, y_px in grid_positions:
             # Check if point is within safe bounds
-            if (x_px < min_margin_px or 
-                x_px > self.config.screen_width - min_margin_px or
-                y_px < min_margin_px or 
-                y_px > self.config.screen_height - min_margin_px):
+            if x_px < min_margin_px:
+                errors.append(f"{point_name} x={x_px:.0f}px too close to left edge")
+            elif x_px > self.config.screen_width - min_margin_px:
+                errors.append(f"{point_name} x={x_px:.0f}px too close to right edge")
+            
+            if y_px < min_margin_px:
+                errors.append(f"{point_name} y={y_px:.0f}px too close to top edge")
+            elif y_px > self.config.screen_height - min_margin_px:
+                errors.append(f"{point_name} y={y_px:.0f}px too close to bottom edge")
+            
+            if self.debug_logger and errors:
                 self.debug_logger.warning(
-                    f"Grid point {point_name} at ({x_px:.0f}, {y_px:.0f}) is too close to screen edge"
+                    f"Grid point {point_name} at ({x_px:.0f}, {y_px:.0f}) is out of bounds"
                 )
-                return False
         
-        return True
+        return errors
     
-    def _log_viewport_info(self):
-        """Log viewport size and grid positions for QC and reproducibility."""
+    def _log_viewport_info(self, grid_positions: List[Tuple[str, float, float]]):
+        """Log viewport size and grid positions for QC and reproducibility.
+        
+        Args:
+            grid_positions: List of (point_name, x_px, y_px) tuples
+        """
+        if not self.debug_logger:
+            return
+            
         self.debug_logger.info(
             f"Viewport: {self.config.screen_width}x{self.config.screen_height}"
         )
         self.debug_logger.info(f"Safe margin: {self.config.safe_margin * 100:.0f}%")
         
-        for point_name, x_norm, y_norm in self.config.grid_positions:
-            x_px = x_norm * self.config.screen_width
-            y_px = y_norm * self.config.screen_height
+        for point_name, x_px, y_px in grid_positions:
             self.debug_logger.info(
                 f"Grid point {point_name}: ({x_px:.0f}, {y_px:.0f}) px"
             )

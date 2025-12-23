@@ -1,0 +1,216 @@
+{
+  "_metadata": {
+    "version": "1.0.0",
+    "description": "Normative baseline values for NeuroLens+ biomarkers. Based on literature values for healthy adults (18-65 years). These are APPROXIMATE values for research purposes only.",
+    "source": "Literature review of oculomotor studies",
+    "population": "Healthy adults (18-65 years)",
+    "disclaimer": "These norms are approximations based on clinical eye tracking literature. Webcam-based measurements may differ from clinical equipment. Do not use for clinical diagnosis."
+  },
+  "fixation": {
+    "stability_rms_px": {
+      "mean": 50.0,
+      "std": 30.0,
+      "unit": "pixels",
+      "direction": "lower_is_better",
+      "clinical_note": "Webcam values typically higher than clinical due to noise"
+    },
+    "bcea_px2": {
+      "mean": 2500.0,
+      "std": 1500.0,
+      "unit": "pixels^2",
+      "direction": "lower_is_better"
+    },
+    "microsaccade_rate_per_min": {
+      "mean": 60.0,
+      "std": 30.0,
+      "unit": "count/minute",
+      "direction": "neutral",
+      "clinical_note": "Normal range 30-120/min"
+    },
+    "drift_velocity_px_s": {
+      "mean": 5.0,
+      "std": 3.0,
+      "unit": "pixels/second",
+      "direction": "lower_is_better"
+    },
+    "percent_time_on_target": {
+      "mean": 85.0,
+      "std": 10.0,
+      "unit": "percent",
+      "direction": "higher_is_better"
+    }
+  },
+  "pursuit": {
+    "gain": {
+      "mean": 0.95,
+      "std": 0.15,
+      "unit": "ratio",
+      "direction": "closer_to_1_is_better",
+      "clinical_note": "Ideal gain is 1.0"
+    },
+    "latency_ms": {
+      "mean": 150.0,
+      "std": 50.0,
+      "unit": "milliseconds",
+      "direction": "lower_is_better",
+      "clinical_note": "Normal range 100-200ms"
+    },
+    "position_error_rmse_px": {
+      "mean": 50.0,
+      "std": 25.0,
+      "unit": "pixels",
+      "direction": "lower_is_better"
+    },
+    "phase_lag_ms": {
+      "mean": 20.0,
+      "std": 30.0,
+      "unit": "milliseconds",
+      "direction": "closer_to_0_is_better"
+    }
+  },
+  "saccade": {
+    "latency_ms": {
+      "mean": 200.0,
+      "std": 40.0,
+      "unit": "milliseconds",
+      "direction": "neutral",
+      "clinical_note": "Normal range 150-250ms for visually-guided saccades"
+    },
+    "duration_ms": {
+      "mean": 60.0,
+      "std": 20.0,
+      "unit": "milliseconds",
+      "direction": "neutral"
+    },
+    "gain": {
+      "mean": 0.95,
+      "std": 0.10,
+      "unit": "ratio",
+      "direction": "closer_to_1_is_better",
+      "clinical_note": "Ideal gain is 1.0 (accurate landing)"
+    },
+    "landing_error_px": {
+      "mean": 30.0,
+      "std": 20.0,
+      "unit": "pixels",
+      "direction": "lower_is_better"
+    }
+  },
+  "antisaccade": {
+    "latency_ms": {
+      "mean": 280.0,
+      "std": 60.0,
+      "unit": "milliseconds",
+      "direction": "neutral",
+      "clinical_note": "Typically 50-100ms slower than pro-saccades"
+    },
+    "direction_error_rate": {
+      "mean": 0.15,
+      "std": 0.10,
+      "unit": "proportion",
+      "direction": "lower_is_better",
+      "clinical_note": "Error rate increases with age and cognitive load"
+    },
+    "correction_time_ms": {
+      "mean": 150.0,
+      "std": 50.0,
+      "unit": "milliseconds",
+      "direction": "lower_is_better"
+    }
+  },
+  "grid9": {
+    "mean_gaze_error_px": {
+      "mean": 80.0,
+      "std": 40.0,
+      "unit": "pixels",
+      "direction": "lower_is_better",
+      "clinical_note": "Webcam accuracy typically 50-150px"
+    },
+    "rmse_gaze_error_px": {
+      "mean": 100.0,
+      "std": 50.0,
+      "unit": "pixels",
+      "direction": "lower_is_better"
+    },
+    "dwell_stability_rms_px": {
+      "mean": 40.0,
+      "std": 25.0,
+      "unit": "pixels",
+      "direction": "lower_is_better"
+    }
+  },
+  "visual_search": {
+    "blink_rate_per_min": {
+      "mean": 17.0,
+      "std": 6.0,
+      "unit": "blinks/minute",
+      "direction": "neutral",
+      "clinical_note": "Normal range 10-25/min. Lower in focused attention, higher with fatigue"
+    },
+    "blink_duration_proxy_mean_ms": {
+      "mean": 200.0,
+      "std": 80.0,
+      "unit": "milliseconds",
+      "direction": "neutral",
+      "clinical_note": "Normal range 100-400ms"
+    },
+    "interblink_interval_mean_s": {
+      "mean": 4.0,
+      "std": 2.0,
+      "unit": "seconds",
+      "direction": "neutral"
+    },
+    "interblink_interval_cv": {
+      "mean": 0.5,
+      "std": 0.2,
+      "unit": "coefficient_of_variation",
+      "direction": "lower_is_better",
+      "clinical_note": "Lower CV indicates more regular blinking"
+    },
+    "blink_burstiness": {
+      "mean": 0.2,
+      "std": 0.15,
+      "unit": "proportion",
+      "direction": "neutral",
+      "clinical_note": "Higher values indicate clustered blinking"
+    },
+    "gaze_presence_pct": {
+      "mean": 85.0,
+      "std": 10.0,
+      "unit": "percent",
+      "direction": "higher_is_better"
+    }
+  },
+  "derived": {
+    "oculomotor_health_score": {
+      "mean": 0.75,
+      "std": 0.15,
+      "unit": "score",
+      "direction": "higher_is_better"
+    },
+    "inhibitory_control_index": {
+      "mean": 0.85,
+      "std": 0.10,
+      "unit": "score",
+      "direction": "higher_is_better"
+    },
+    "pursuit_quality": {
+      "mean": 0.80,
+      "std": 0.15,
+      "unit": "score",
+      "direction": "higher_is_better"
+    },
+    "fixation_quality": {
+      "mean": 0.80,
+      "std": 0.15,
+      "unit": "score",
+      "direction": "higher_is_better"
+    },
+    "blink_regularity": {
+      "mean": 0.50,
+      "std": 0.20,
+      "unit": "score",
+      "direction": "higher_is_better"
+    }
+  }
+}

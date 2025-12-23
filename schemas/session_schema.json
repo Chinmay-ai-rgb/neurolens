@@ -1,0 +1,432 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NeuroLens+ Session Schema",
+  "description": "Canonical schema for ML-ready session data. All biomarkers with units and valid ranges.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["session_id", "timestamp"],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier (format: YYYYMMDD_HHMMSS)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of session start"
+    },
+    "screen_width": {
+      "type": "integer",
+      "minimum": 800,
+      "description": "Screen width in pixels"
+    },
+    "screen_height": {
+      "type": "integer",
+      "minimum": 600,
+      "description": "Screen height in pixels"
+    },
+    "calibration": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "boolean",
+          "description": "Whether calibration was accepted"
+        },
+        "error_mean_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "Mean calibration error"
+        },
+        "error_max_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "Maximum calibration error"
+        },
+        "quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Calibration quality score (0-1)"
+        }
+      }
+    },
+    "tasks_completed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6,
+      "description": "Number of tasks completed in session"
+    },
+    "fixation": {
+      "type": "object",
+      "description": "Fixation task biomarkers",
+      "properties": {
+        "valid_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of valid trials"
+        },
+        "n_trials": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stability_rms_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "RMS gaze position deviation during fixation",
+          "typical_range": [10, 300]
+        },
+        "bcea_px2": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels^2",
+          "description": "Bivariate Contour Ellipse Area"
+        },
+        "microsaccade_rate_per_min": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "count/minute",
+          "description": "Microsaccade rate during fixation",
+          "typical_range": [0, 120]
+        },
+        "drift_velocity_px_s": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels/second",
+          "description": "Slow drift velocity during fixation"
+        },
+        "percent_time_on_target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "unit": "percent",
+          "description": "Percentage of time gaze was on target"
+        }
+      }
+    },
+    "pursuit": {
+      "type": "object",
+      "description": "Smooth pursuit task biomarkers",
+      "properties": {
+        "valid_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n_trials": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gain": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ratio of eye velocity to target velocity",
+          "typical_range": [0.7, 1.3]
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "milliseconds",
+          "description": "Time to initiate pursuit after target motion",
+          "typical_range": [100, 400]
+        },
+        "catch_up_saccade_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of catch-up saccades during pursuit"
+        },
+        "position_error_rmse_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "RMS position error during pursuit"
+        },
+        "phase_lag_ms": {
+          "type": "number",
+          "unit": "milliseconds",
+          "description": "Phase lag between eye and target position"
+        }
+      }
+    },
+    "saccade": {
+      "type": "object",
+      "description": "Pro-saccade task biomarkers",
+      "properties": {
+        "valid_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n_trials": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "milliseconds",
+          "description": "Saccade reaction time",
+          "typical_range": [150, 400]
+        },
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "milliseconds",
+          "description": "Saccade duration",
+          "typical_range": [30, 150]
+        },
+        "peak_velocity_px_s": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels/second",
+          "description": "Peak saccade velocity"
+        },
+        "amplitude_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "Saccade amplitude"
+        },
+        "gain": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ratio of saccade amplitude to target eccentricity",
+          "typical_range": [0.8, 1.2]
+        },
+        "landing_error_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "Distance from landing position to target"
+        }
+      }
+    },
+    "antisaccade": {
+      "type": "object",
+      "description": "Anti-saccade task biomarkers",
+      "properties": {
+        "valid_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n_trials": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "milliseconds",
+          "description": "Anti-saccade reaction time",
+          "typical_range": [200, 500]
+        },
+        "direction_error_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of trials with incorrect initial saccade direction"
+        },
+        "correction_time_ms": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "milliseconds",
+          "description": "Time to correct direction errors"
+        },
+        "inhibition_success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of trials with successful inhibition"
+        }
+      }
+    },
+    "grid9": {
+      "type": "object",
+      "description": "9-point gaze grid task biomarkers",
+      "properties": {
+        "valid_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n_points": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "mean_gaze_error_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "Mean gaze error across all points"
+        },
+        "rmse_gaze_error_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "RMS gaze error across all points"
+        },
+        "dwell_stability_rms_px": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "pixels",
+          "description": "RMS stability during dwell at each point"
+        }
+      }
+    },
+    "visual_search": {
+      "type": "object",
+      "description": "Visual search task biomarkers (covert blink measurement)",
+      "properties": {
+        "valid_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n_trials": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blink_rate_per_min": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "blinks/minute",
+          "description": "Spontaneous blink rate",
+          "typical_range": [10, 30]
+        },
+        "blink_rate_confidence": {
+          "type": "string",
+          "enum": ["HIGH", "LOW"],
+          "description": "Confidence in blink rate (LOW if trial < 10s)"
+        },
+        "blink_duration_proxy_mean_ms": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "milliseconds",
+          "description": "Mean blink duration (proxy measurement, valid range 80-500ms)",
+          "typical_range": [100, 400]
+        },
+        "blink_duration_valid_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of blinks with valid duration (80-500ms)"
+        },
+        "interblink_interval_mean_s": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "seconds",
+          "description": "Mean time between blinks"
+        },
+        "interblink_interval_cv": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Coefficient of variation of interblink intervals"
+        },
+        "blink_burstiness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Measure of blink clustering (0=regular, 1=bursty)"
+        },
+        "gaze_presence_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "unit": "percent",
+          "description": "Percentage of time with valid gaze tracking"
+        },
+        "qc_status": {
+          "type": "string",
+          "enum": ["PASS", "WARN", "FAIL"],
+          "description": "Quality control status"
+        },
+        "qc_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of QC issues detected"
+        }
+      }
+    },
+    "derived": {
+      "type": "object",
+      "description": "Derived features computed from multiple tasks",
+      "properties": {
+        "main_sequence_ratio": {
+          "type": "number",
+          "description": "Peak velocity / amplitude ratio for saccades"
+        },
+        "inhibitory_control_index": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "1 - direction_error_rate from antisaccade"
+        },
+        "pursuit_quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Pursuit gain quality score"
+        },
+        "fixation_quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fixation stability quality score"
+        },
+        "blink_regularity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Blink timing regularity (1 - CV)"
+        },
+        "oculomotor_health_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Composite oculomotor health score"
+        }
+      }
+    },
+    "qc": {
+      "type": "object",
+      "description": "Session-level quality control",
+      "properties": {
+        "overall_status": {
+          "type": "string",
+          "enum": ["PASS", "WARN", "FAIL"],
+          "description": "Overall session QC status"
+        },
+        "fps_mean": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "frames/second",
+          "description": "Mean frame rate during session"
+        },
+        "fps_min": {
+          "type": "number",
+          "minimum": 0,
+          "unit": "frames/second",
+          "description": "Minimum frame rate during session"
+        },
+        "total_valid_trials": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total valid trials across all tasks"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Session-level QC flags"
+        }
+      }
+    }
+  }
+}

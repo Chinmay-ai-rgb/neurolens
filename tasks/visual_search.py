@@ -26,8 +26,9 @@ VISUAL_SEARCH_SUMMARY_COLUMNS = [
     'search_time_ms',
     'blink_count',
     'blink_rate_per_min',
-    'blink_duration_mean_ms',
-    'blink_duration_std_ms',
+    'blink_duration_proxy_mean_ms',  # Renamed to indicate proxy measurement
+    'blink_duration_proxy_std_ms',
+    'blink_duration_valid_count',  # Number of blinks with valid duration (80-500ms)
     'interblink_interval_mean_s',
     'interblink_interval_std_s',
     'interblink_interval_cv',
@@ -36,11 +37,25 @@ VISUAL_SEARCH_SUMMARY_COLUMNS = [
     'valid_fraction',
     'valid',
     'invalid_reason',
+    'qc_status',  # PASS / WARN / FAIL
+    'qc_flags',  # Comma-separated list of QC issues
+    'blink_rate_confidence',  # HIGH / LOW (based on trial duration)
     'quality_score',
     'calibration_quality',
     'fps_median',
     'clamp_rate'
 ]
+
+
+# QC status levels
+class QCStatus:
+    PASS = "PASS"
+    WARN = "WARN"
+    FAIL = "FAIL"
+
+
+# Minimum trial duration for high-confidence blink rate
+MIN_TRIAL_DURATION_FOR_HIGH_CONFIDENCE = 10.0  # seconds
 
 
 @dataclass
@@ -164,20 +179,58 @@ class VisualSearchTask(BaseTask):
             if trial_idx < self.config.n_trials - 1:
                 self._show_break()
         
-        # Compute results
+        # Compute results with session-level aggregation
         result.n_trials = len(trial_summaries)
         result.n_valid_trials = sum(1 for t in trial_summaries if t.get('valid', 0) == 1)
         result.valid_rate = result.n_valid_trials / result.n_trials if result.n_trials > 0 else 0.0
         
+        # Session-level QC aggregation
+        all_qc_statuses = [t.get('qc_status', QCStatus.FAIL) for t in trial_summaries]
+        all_qc_flags = []
+        for t in trial_summaries:
+            flags = t.get('qc_flags', '')
+            if flags:
+                all_qc_flags.extend(flags.split(','))
+        
+        # Determine session-level QC status
+        if all(s == QCStatus.PASS for s in all_qc_statuses):
+            session_qc_status = QCStatus.PASS
+        elif any(s == QCStatus.FAIL for s in all_qc_statuses):
+            session_qc_status = QCStatus.FAIL
+        else:
+            session_qc_status = QCStatus.WARN
+        
+        # Count high-confidence trials
+        high_confidence_trials = [t for t in trial_summaries if t.get('blink_rate_confidence') == 'HIGH']
+        
         valid_trials = [t for t in trial_summaries if t.get('valid', 0) == 1]
         if valid_trials:
+            # Session-level biomarker aggregation
             result.biomarkers = {
-                'mean_blink_rate_per_min': np.nanmean([t.get('blink_rate_per_min', np.nan) for t in valid_trials]),
-                'mean_blink_duration_ms': np.nanmean([t.get('blink_duration_mean_ms', np.nan) for t in valid_trials]),
-                'mean_interblink_interval_s': np.nanmean([t.get('interblink_interval_mean_s', np.nan) for t in valid_trials]),
-                'mean_interblink_cv': np.nanmean([t.get('interblink_interval_cv', np.nan) for t in valid_trials]),
-                'mean_blink_burstiness': np.nanmean([t.get('blink_burstiness', np.nan) for t in valid_trials]),
-                'mean_gaze_presence_pct': np.nanmean([t.get('gaze_presence_pct', np.nan) for t in valid_trials]),
+                # Blink rate (weighted by confidence)
+                'session_blink_rate_per_min': np.nanmean([t.get('blink_rate_per_min', np.nan) for t in valid_trials]),
+                'session_blink_rate_high_conf': np.nanmean([t.get('blink_rate_per_min', np.nan) for t in high_confidence_trials]) if high_confidence_trials else np.nan,
+                
+                # Blink duration (proxy)
+                'session_blink_duration_proxy_ms': np.nanmean([t.get('blink_duration_proxy_mean_ms', np.nan) for t in valid_trials]),
+                
+                # Interblink interval
+                'session_interblink_interval_s': np.nanmean([t.get('interblink_interval_mean_s', np.nan) for t in valid_trials]),
+                'session_interblink_cv': np.nanmean([t.get('interblink_interval_cv', np.nan) for t in valid_trials]),
+                
+                # Burstiness
+                'session_blink_burstiness': np.nanmean([t.get('blink_burstiness', np.nan) for t in valid_trials]),
+                
+                # Engagement
+                'session_gaze_presence_pct': np.nanmean([t.get('gaze_presence_pct', np.nan) for t in valid_trials]),
+                
+                # QC summary
+                'session_qc_status': session_qc_status,
+                'session_qc_flags': list(set(all_qc_flags)),  # Unique flags
+                'n_high_confidence_trials': len(high_confidence_trials),
+                'n_pass_trials': sum(1 for s in all_qc_statuses if s == QCStatus.PASS),
+                'n_warn_trials': sum(1 for s in all_qc_statuses if s == QCStatus.WARN),
+                'n_fail_trials': sum(1 for s in all_qc_statuses if s == QCStatus.FAIL),
             }
         
         result.mean_quality_score = np.nanmean([t.get('quality_score', 0) for t in trial_summaries])
@@ -377,7 +430,11 @@ class VisualSearchTask(BaseTask):
         target_found: bool,
         search_time_ms: float
     ) -> Dict[str, Any]:
-        """Compute blink biomarkers (covertly measured)."""
+        """Compute blink biomarkers (covertly measured).
+        
+        Blink duration is labeled as 'proxy' because webcam-based detection
+        has limited temporal resolution. Valid duration range: 80-500ms.
+        """
         
         generic_validity = self.compute_trial_validity()
         
@@ -386,15 +443,24 @@ class VisualSearchTask(BaseTask):
         # Blink rate
         blink_rate = n_blinks / (duration_s / 60) if duration_s > 0 else np.nan
         
-        # Blink durations
-        durations_ms = []
+        # Blink rate confidence based on trial duration
+        # Short trials (<10s) have LOW confidence for blink rate
+        blink_rate_confidence = "HIGH" if duration_s >= MIN_TRIAL_DURATION_FOR_HIGH_CONFIDENCE else "LOW"
+        
+        # Blink durations (proxy measurement)
+        # Valid range: 80-500ms (physiologically plausible blink duration)
+        all_durations_ms = []
+        valid_durations_ms = []
         for start, end in zip(blink_starts, blink_ends):
             dur = (end - start) * 1000
-            if 50 < dur < 500:  # Reasonable blink duration (50-500ms)
-                durations_ms.append(dur)
+            all_durations_ms.append(dur)
+            # Only count durations within valid physiological range
+            if 80 <= dur <= 500:
+                valid_durations_ms.append(dur)
         
-        duration_mean = np.mean(durations_ms) if durations_ms else np.nan
-        duration_std = np.std(durations_ms) if len(durations_ms) > 1 else np.nan
+        duration_proxy_mean = np.mean(valid_durations_ms) if valid_durations_ms else np.nan
+        duration_proxy_std = np.std(valid_durations_ms) if len(valid_durations_ms) > 1 else np.nan
+        duration_valid_count = len(valid_durations_ms)
         
         # Interblink intervals
         intervals = []
@@ -422,12 +488,47 @@ class VisualSearchTask(BaseTask):
         # Gaze presence (engagement metric)
         gaze_presence = (valid_samples / total_samples * 100) if total_samples > 0 else 0
         
-        # Validity check
-        valid = 1 if (
-            generic_validity.valid_fraction >= 0.7 and
-            n_blinks >= self.config.min_blinks and
-            gaze_presence >= 50
-        ) else 0
+        # QC flags and status
+        qc_flags = []
+        
+        # Check for short trial duration
+        if duration_s < MIN_TRIAL_DURATION_FOR_HIGH_CONFIDENCE:
+            qc_flags.append("short_trial_duration")
+        
+        # Check for insufficient blinks
+        if n_blinks < self.config.min_blinks:
+            qc_flags.append("insufficient_blinks")
+        
+        # Check for low gaze presence
+        if gaze_presence < 50:
+            qc_flags.append("low_gaze_presence")
+        
+        # Check for low valid fraction
+        if generic_validity.valid_fraction < 0.7:
+            qc_flags.append("low_valid_fraction")
+        
+        # Check for high clamp rate
+        if generic_validity.clamp_rate > 0.25:
+            qc_flags.append("high_clamp_rate")
+        
+        # Check for low FPS
+        if generic_validity.fps_median < 15:
+            qc_flags.append("low_fps")
+        
+        # Check for few valid blink durations
+        if n_blinks > 0 and duration_valid_count < n_blinks * 0.5:
+            qc_flags.append("many_invalid_blink_durations")
+        
+        # Determine QC status
+        if len(qc_flags) == 0:
+            qc_status = QCStatus.PASS
+        elif any(f in qc_flags for f in ["insufficient_blinks", "low_gaze_presence", "low_valid_fraction"]):
+            qc_status = QCStatus.FAIL
+        else:
+            qc_status = QCStatus.WARN
+        
+        # Validity check (for backward compatibility)
+        valid = 1 if qc_status != QCStatus.FAIL else 0
         
         if valid == 0:
             if n_blinks < self.config.min_blinks:
@@ -452,8 +553,9 @@ class VisualSearchTask(BaseTask):
             'search_time_ms': search_time_ms,
             'blink_count': n_blinks,
             'blink_rate_per_min': blink_rate,
-            'blink_duration_mean_ms': duration_mean,
-            'blink_duration_std_ms': duration_std,
+            'blink_duration_proxy_mean_ms': duration_proxy_mean,
+            'blink_duration_proxy_std_ms': duration_proxy_std,
+            'blink_duration_valid_count': duration_valid_count,
             'interblink_interval_mean_s': interval_mean,
             'interblink_interval_std_s': interval_std,
             'interblink_interval_cv': interval_cv,
@@ -462,6 +564,9 @@ class VisualSearchTask(BaseTask):
             'valid_fraction': generic_validity.valid_fraction,
             'valid': valid,
             'invalid_reason': reason.value,
+            'qc_status': qc_status,
+            'qc_flags': ','.join(qc_flags) if qc_flags else '',
+            'blink_rate_confidence': blink_rate_confidence,
             'quality_score': generic_validity.quality_score,
             'calibration_quality': calib_quality,
             'fps_median': generic_validity.fps_median,
@@ -483,8 +588,9 @@ class VisualSearchTask(BaseTask):
             'search_time_ms': np.nan,
             'blink_count': 0,
             'blink_rate_per_min': np.nan,
-            'blink_duration_mean_ms': np.nan,
-            'blink_duration_std_ms': np.nan,
+            'blink_duration_proxy_mean_ms': np.nan,
+            'blink_duration_proxy_std_ms': np.nan,
+            'blink_duration_valid_count': 0,
             'interblink_interval_mean_s': np.nan,
             'interblink_interval_std_s': np.nan,
             'interblink_interval_cv': np.nan,
@@ -493,6 +599,9 @@ class VisualSearchTask(BaseTask):
             'valid_fraction': 0.0,
             'valid': 0,
             'invalid_reason': InvalidReason.SKIPPED.value,
+            'qc_status': QCStatus.FAIL,
+            'qc_flags': 'skipped',
+            'blink_rate_confidence': 'LOW',
             'quality_score': 0.0,
             'calibration_quality': 0.0,
             'fps_median': 0.0,
