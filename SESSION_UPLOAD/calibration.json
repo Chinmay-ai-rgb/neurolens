@@ -1,0 +1,28 @@
+{
+  "accepted": true,
+  "reason": "high_error",
+  "baseline_anchor_x_norm": 0.540227671712637,
+  "baseline_anchor_y_norm": 0.4270600609481335,
+  "slope_x": -47096.678194058506,
+  "intercept_x": 25911.031792306934,
+  "slope_y": 855,
+  "intercept_y": 0,
+  "calibration_error_px": {
+    "center": 175.68077300624563,
+    "left": 154.3527164720987,
+    "right": 86.75725150728282
+  },
+  "mean_error_px": 138.93024699520905,
+  "max_error_px": 175.68077300624563,
+  "r_squared_x": 0.8752110116546197,
+  "r_squared_y": NaN,
+  "points_used": [
+    "center",
+    "left",
+    "right"
+  ],
+  "num_points": 3,
+  "min_range_threshold": 0.01,
+  "max_error_threshold": 120.0,
+  "min_slope_threshold": 100.0
+}

@@ -54,8 +54,8 @@ class ValidityThresholds:
     saccade_max_peak_velocity: float = 20000.0  # px/s (increased from 5000 for webcam)
     
     # Antisaccade thresholds
-    antisaccade_latency_min_ms: float = 80.0
-    antisaccade_latency_max_ms: float = 1000.0
+    antisaccade_latency_min_ms: float = 110.0
+    antisaccade_latency_max_ms: float = 1500.0
     
     # Fixation thresholds (relaxed for webcam-based tracking)
     fixation_max_deviation_px: float = 300.0  # Increased from 100px for webcam accuracy
@@ -324,6 +324,19 @@ class ValidityChecker:
             result.valid = False
             result.reason = generic_validity.reason
             result.quality_score = generic_validity.quality_score
+            return result
+        
+        # Handle NaN latency - do NOT treat as 0.0
+        if not np.isfinite(latency_ms):
+            result.valid = False
+            result.reason = InvalidReason.INSUFFICIENT_SAMPLES
+            result.quality_score = generic_validity.quality_score
+            result.details = {
+                'latency_ms': latency_ms,
+                'direction_error': direction_error,
+                'correction_time_ms': correction_time_ms,
+                'inhibition_success': not direction_error
+            }
             return result
         
         # Check antisaccade-specific criteria

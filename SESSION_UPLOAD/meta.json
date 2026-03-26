@@ -1,0 +1,35 @@
+{
+  "session_id": "20260131_144518",
+  "timestamp": "2026-01-31T14:46:22.950822",
+  "device_info": {
+    "platform": "Darwin",
+    "platform_version": "Darwin Kernel Version 23.6.0: Thu Dec 19 20:44:50 PST 2024; root:xnu-10063.141.1.703.2~1/RELEASE_X86_64",
+    "machine": "x86_64",
+    "python_version": "3.10.13"
+  },
+  "screen_width": 1368,
+  "screen_height": 855,
+  "config": {
+    "task": "fixation",
+    "n_trials": 5,
+    "fixation_duration": 10.0,
+    "target_radius_mode": "adaptive",
+    "target_radius_px": 100.0,
+    "adaptive_radius_k": 2.5,
+    "adaptive_radius_min_px": 75.0,
+    "adaptive_radius_max_px": 300.0
+  },
+  "git_commit": "74ed6f85015f9241c04f21422422956e5bf47471",
+  "calibration_accepted": true,
+  "calibration_reason": "high_error",
+  "calibration_error_mean_px": 138.93024699520905,
+  "calibration_error_max_px": 175.68077300624563,
+  "thresholds": {},
+  "fps_mean": 29.859978013490245,
+  "fps_median": 30.005220072979597,
+  "fps_min": 25.118621778880623,
+  "fps_max": 30.45283777514563,
+  "valid_rates": {
+    "fixation": 1.0
+  }
+}
