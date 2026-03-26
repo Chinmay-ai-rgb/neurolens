@@ -9,3 +9,11 @@ build/
 .env
 .venv/
 venv/
+
+# OS / IDE
+.DS_Store
+
+# Local runs / uploads / generated artifacts
+SESSION_UPLOAD/
+models/*.pkl
+*.zip
